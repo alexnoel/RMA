@@ -264,6 +264,12 @@ void calc_blocking(rma_entry** table, int n_entries){
 		}
 	}
 	
+	for (i = 0; i < n_entries; i++) {
+		for (j = 0; j < num_resources; j++) {
+			table[i]->B[j] = max(table[i]->max_direct[j], table[i]->pushthrough[j]);
+		}
+	}
+	
 	
 	//sum the blocking from each resource for each task.
 	for (i = 0; i < n_entries; i++) {
@@ -323,8 +329,9 @@ void print_table(rma_entry** table, int n_entries){
 	//header
 	printf("name  \t|runtime\t|period  \t");
 	for (i = 0; i < table[0]->num_resources; i++) {
-		printf("|res %d \t\t|max_dir %d\t|push %d\t\t|tot_blocking %d\t", i,i,i,i);
+		printf("|res %d time \t|max_dir %d\t|push %d\t\t|Blocking %d\t", i,i,i,i);
 	}
+	printf("total blocking");
 	printf("\n");
 	//body
 	for (i = 0; i < n_entries; i++) {
@@ -338,6 +345,7 @@ void print_table(rma_entry** table, int n_entries){
 			printf("|%8d\t",table[i]->B[j]);
 			
 		}
+		printf("|%8d\t",table[i]->total_blocking);
 		printf("\n");
 	}
 	
