@@ -1,4 +1,4 @@
-name  	|runtime	|period  	|res 0 		|max_dir 0	|push 0		|B 0		||res 1 		|max_dir 1	|push 1		|B 1		|total blocking
+name  	|runtime	|period  	|res 0 time 	|max_dir 0	|push 0		|Blocking 0	|res 1 time 	|max_dir 1	|push 1		|Blocking 1	total blocking
 task 0	|    1300	|    2560	|     200	|     300	|       0	|     300	|       0	|       0	|       0	|       0	|     300	
 task 1	|    4700	|   40960	|     200	|     300	|     300	|     300	|       0	|       0	|    6000	|    6000	|    6300	
 task 2	|    9000	|   61440	|     150	|     300	|     300	|     300	|    3000	|    6000	|    6000	|    6000	|    6300	
