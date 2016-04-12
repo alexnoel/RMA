@@ -2,7 +2,13 @@
 
 typedef int (*compfn)(const void*, const void*);
 
-//qsort comparison function
+//private functions
+
+/**************************************************
+ 
+ Comparison function for use in qsort.
+ 
+ ****************************************************/
 int comp_func(rma_entry** a, rma_entry** b){
 	
 	
@@ -14,13 +20,117 @@ int comp_func(rma_entry** a, rma_entry** b){
 	return 0;
 }
 
-
-//auxiliary MAX function
+/**************************************************
+ 
+ Max of two integers. Returns the larger of the two integer
+ inputs.
+ 
+ ****************************************************/
 
 int max(int a, int b){
 	if (a > b) return a;
 	return b;
 }
+
+/**************************************************
+ 
+ Returns 1 if the system is schedulable with i tasks and 
+ given value pair of (k,l).
+ Returns 0 if the system is not schedulable under those conditions.
+
+ Assumes the values k and l are valid for this system.
+ 
+ The variable oh is the overhead in the system.
+ 
+ ****************************************************/
+
+
+int kl_test(rma_entry** table, int n_entries, int oh, int k, int l, int i){
+	
+	int val;
+	int period_window;
+	int l_t; //intermediate value that makes computation easier.
+			 //the cieling part of the formula
+	
+	int j;
+	
+	int run_sum = 0;
+	
+	//main sum in RMA formula
+	for (j = 0; j < i-1; j++) {
+		l_t = (((l+ 1) * (table[j]->T))/table[j]->T); //the plus one acts as a ceiling
+		if ((((l+ 1) * (table[j]->T)) % table[j]->T)) {   //but only if there is a remainder
+			l_t ++;
+		}
+		//printf("l_t: %d\n",l_t);
+		val = (table[j]->R + oh) * l_t;
+		run_sum += val;
+	}
+	
+	//adds the blocking from task i
+	run_sum += table[i]->R + table[i]->total_blocking + oh;
+	
+	//calculate the time allowable for the tasks to run for one period.
+	period_window = (l+ 1) * table[k]->T;
+	
+	//check if it is schedulable
+	if (run_sum <= period_window) {
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
+
+
+
+/**************************************************
+ 
+ Returns 1 if the system is schedulable with i tasks.
+ returns 0 if the system is not schedulable.
+ 
+ If schedulable, this function prints which value pair of
+ (k,l) succeeded.
+ 
+ Tests all valid pairs of (k,l) for the given value i.
+ 
+ The variable oh is the overhead in the system.
+ 
+ ****************************************************/
+
+int i_test(rma_entry** table, int n_entries, int oh, int i){
+	
+	int  l_max;
+	int k,l;
+	
+	//for every valid value fo k
+	for (k = 0; k < i + 1; k++) {
+		
+		//maximum valid value of l is dependent on the period of task i and k
+		l_max = table[i]->T/table[k]->T; //integer division takes care of the floor
+		//operation
+		for (l = 0; l < l_max; l++) {
+			//test schedulability for current (k,l) pair
+			if(kl_test(table, n_entries, oh, k, l, i)){
+				//as soon as we find a successful pair, we can move on. We know the
+				//system is schedulable for this value of i
+				printf("Test with %d tasks PASSED with values (k,l): (%d,%d)\n",i,k,l);
+				return 1;
+			}
+		}
+	}
+	
+	//if we made it this far, the system failed for every combination of (k,l).
+	//System is not schedulable.
+	printf("Test with %d tasks FAILED.\n",i);
+	return 0;
+	
+}
+
+
+
+
+//Implementation of public functions
 
 
 /**************************************************
@@ -109,10 +219,14 @@ void calc_blocking(rma_entry** table, int n_entries){
 	int i,j,k;
 	int num_resources = table[0]->num_resources;
 	
-	
+	//calculate for each resource, and each task.
 	for (i = 0; i < num_resources; i++) {
 		for (j = 0; j < n_entries; j++) {
 			
+			//calculate max direct blocking
+			//only valid if the task directly uses the resource, otherwise 0.
+			//if the task uses the resource, the max blocking is the maximum
+			//resource usage time of any task with lower priority.
 			if(j < n_entries-1){
 				if (table[j]->res_t[i] == 0) {
 					table[j]->max_direct[i] = 0;
@@ -128,6 +242,11 @@ void calc_blocking(rma_entry** table, int n_entries){
 				table[j]->max_direct[i] = 0;
 				
 			}
+			
+			//calculate max pushtrough blocking
+			//the tasks with highest priority and lowest priority have 0 pushthrough
+			//all other tasks, the pushtrough is the maximum resource usage time
+			//of any task with lower priority.
 			
 			if (j == 0 || j == n_entries - 1) {
 				table[j]->pushthrough[i] = 0;
@@ -146,7 +265,7 @@ void calc_blocking(rma_entry** table, int n_entries){
 	}
 	
 	
-	
+	//sum the blocking from each resource for each task.
 	for (i = 0; i < n_entries; i++) {
 		table[i]->total_blocking = 0;
 		for (j = 0; j < num_resources; j++) {
@@ -158,78 +277,44 @@ void calc_blocking(rma_entry** table, int n_entries){
 }
 
 
-//Returns 1 if the table passes and is schedulable for the given indices of ikl.
-//returns 0 otherwise.
-int kl_test(rma_entry** table, int n_entries, int oh, int k, int l, int i){
-	
-	int val;
-	int period_window;
-	
-	int j;
-	
-	int run_sum = 0;
-	for (j = 0; j < i-1; j++) {
-		int l_t = (((l+ 1) * (table[j]->T))/table[j]->T); //the plus one acts as a ceiling
-		if ((((l+ 1) * (table[j]->T)) % table[j]->T)) {
-			l_t ++;
-		}
-		//printf("l_t: %d\n",l_t);
-		val = (table[j]->R + oh) * l_t;
-		run_sum += val;
-	}
-	
-	run_sum += table[i]->R + table[i]->total_blocking + oh;
-	
-	period_window = (l+ 1) * table[k]->T;
-	//printf("\t\t%d:\t%d  <=  %d\n",l,val,period_window);
-	if (run_sum <= period_window) {
-		return 1;
-	}else{
-		return 0;
-	}
-}
 
-
-//Returns 1 if the table passes for a certain value.
-//Returns 0 otherwise.
-//prints the values of k and l for which the tbale passed and is schedulable.
-//tests all valid k,l value pairs for a particular value of i.
-int i_test(rma_entry** table, int n_entries, int oh, int i){
-	
-	int  l_max;
-	int k,l;
-	
-	//printf("%d:\n",i);
-	for (k = 0; k < i + 1; k++) {
-		//printf("\t%d:\n",k);
-		l_max = table[i]->T/table[k]->T; //integer division takes care of the floor
-										 //operation
-		for (l = 0; l < l_max; l++) {
-			if(kl_test(table, n_entries, oh, k, l, i)){
-				printf("Test with %d tasks PASSED with values (k,l): (%d,%d)\n",i,k,l);
-				return 1;
-			}
-		}
-	}
-	printf("Test with %d tasks FAILED.\n",i);
-	return 0;
-	
-}
+/**************************************************
+ 
+ Returns 1 if the system is schedulable for ALL tasks.
+ Returns 0 if the system is not schedulable.
+ 
+ n_entries is the number of tasks in the total system
+ The variable oh is the overhead in the system
+ 
+ ****************************************************/
 
 
 int is_schedulable(rma_entry** table, int n_entries, int oh){
 	int i;
-	
+	//tests schedulability for each value of i.
+	//i represents the number of tasks to try to schedule.
 	for (i = 0; i < n_entries; i++) {
+		//if we fail once, we know the system is not schedulable.
 		if(i_test(table, n_entries, oh, i) == 0){
 			printf("EXITING.\n");
 			return 0;
 		}
 	}
+	
+	//if we make it here, all tasks are schedulable
 	printf("SUCCESSFUL. Tasks are schedulable.\n");
 	return 1;
 }
 
+
+/**************************************************
+ 
+ Prints a table showing all tasks, thier runtimes and 
+ periods, and the amount of time they use each resource
+ available to the system, and the amount of time each 
+ task might be blocked because of each resource.
+ 
+ ****************************************************/
 
 void print_table(rma_entry** table, int n_entries){
 	

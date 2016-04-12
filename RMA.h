@@ -29,6 +29,8 @@
 	B:		Maximum total amount of blocking this task can encounter
 			for a resource. Maximum of the maximum direct blocking and
 			maximum pushthrough blocking.
+	total_blocking: a sum of the blocking caused by each resource 
+			in the system.
  
  ****************************************************/
 typedef struct rma_entry_t{
@@ -86,23 +88,37 @@ void delete_entry(rma_entry* ent);
 void table_sort(rma_entry** table, int n_entries);
 
 
-//Calculates the max blocking and pushthrough
+/**************************************************
+ 
+ Calculates the maximum blocking time in the system for 
+ each of the resources in the system. 
+ Blocking must be calcuated before doing RMA analysis.
+ 
+ ****************************************************/
 void calc_blocking(rma_entry** table, int n_entries);
 
 
-//Returns 1 if the table passes and is schedulable for the given indices of ikl.
-//returns 0 otherwise.
-int kl_test(rma_entry** table, int n_entries, int oh, int k, int l, int i);
 
-
-//Returns 1 if the table passes for a certain value.
-//Returns 0 otherwise.
-//prints the values of k and l for which the tbale passed and is schedulable.
-int i_test(rma_entry** table, int n_entries, int oh, int i);
-
-
+/**************************************************
+ 
+ Returns 1 if the system is schedulable for ALL tasks.
+ Returns 0 if the system is not schedulable.
+ 
+ n_entries is the number of tasks in the total system
+ The variable oh is the overhead in the system
+ 
+ ****************************************************/
 int is_schedulable(rma_entry** table, int n_entries, int oh);
 
+
+/**************************************************
+ 
+ Prints a table showing all tasks, thier runtimes and
+ periods, and the amount of time they use each resource
+ available to the system, and the amount of time each
+ task might be blocked because of each resource.
+ 
+ ****************************************************/
 void print_table(rma_entry** table, int n_entries);
 
 
